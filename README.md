@@ -33,6 +33,35 @@ cd Psh-shell
 make
 ```
 
+### Benchmarks
+
+Build the benchmark-enabled shell and run the execution or job-control benchmark:
+
+```bash
+make bench
+make bench-exec
+make bench-jobcontrol
+```
+
+Run the pipeline throughput benchmark with:
+
+```bash
+make bench-pipeline
+```
+
+Recorded validation results on CPU core 2, using five independent benchmark runs:
+
+- External `true` execution: **536.82 us median**, **774.38 us p95** for 10,000 commands
+- Foreground job-control bookkeeping: **7.28 us median**, **14.68 us p95** for 10,000 commands
+- Pipeline throughput for a 1 GiB `/dev/zero` stream to `/dev/null`:
+    - 2 processes: **2.778 GiB/s** median
+    - 3 processes: **1.342 GiB/s** median
+    - 5 processes: **0.704 GiB/s** median
+    - 9 processes: **0.333 GiB/s** median
+
+Results and validation details are in [`bench/results/`](bench/results/), including
+the workload, repetition count, and aggregation method.
+
 ### Run
 
 ```bash
@@ -406,7 +435,7 @@ logout
 
 Detailed architecture and implementation notes — including execution flow, data
 structures, the double-`setpgid` race condition fix, and signal handling design —
-are available in [docs/INTERNALS.md](docs/INTERNALS.md).
+are available in [docs/internals.md](docs/internals.md).
 
 ---
 
@@ -427,7 +456,7 @@ Psh-shell/
 │   └── helpers.c       # Shared utilities
 ├── include/            # Header files
 ├── docs/
-│   └── INTERNALS.md    # Architecture and implementation deep dive
+│   └── internals.md    # Architecture and implementation deep dive
 ├── Makefile
 └── README.md
 ```
@@ -446,7 +475,7 @@ Psh-shell/
 
 ## Compilation & Code Quality
 
-- **Compiler:** GCC with C11 standard
+- **Compiler:** GCC
 - **Platform:** Linux (Ubuntu 22.04+)
 - **System calls used:** `fork`, `execvp`, `waitpid`, `pipe`, `dup2`, `open`, `setpgid`, `tcsetpgrp`, `sigaction`, `kill`, `getcwd`, `gethostname`, `chdir`
 - Modular design with clear separation of concerns
