@@ -1,0 +1,227 @@
+
+
+Overall Design
+
+
+Q1. What is the responsibility of input.c?
+
+->  input.c is responsible for interactive user input. It switches the terminal into raw mode, reads characters one at a time, 
+    handles editing features such as backspace and history navigation, processes special keys like Ctrl+D and arrow keys, 
+    and finally returns the completed command line to the shell.
+
+Q2. Why didn't you simply use getline()?
+
+->  getline() works only in canonical mode, where the terminal buffers input until Enter is pressed. 
+    Since my shell supports interactive editing features like backspace handling and history navigation using arrow keys, 
+    I needed to read individual keystrokes in raw mode.
+
+
+Raw Mode
+
+
+Q3. What is raw mode?
+
+->  Raw mode is a terminal configuration where input is delivered to the program one character at a time instead of being line-buffered. 
+    The terminal also stops performing features such as automatic echoing and line editing, allowing the shell to implement those behaviors itself.
+
+Q4. Why enable raw mode?
+
+->  Features like command history navigation and custom backspace handling require immediate access to each key press. 
+    Raw mode allows the shell to process every character as soon as the user types it.
+
+Q5. Why save the original terminal settings?
+
+    static struct termios orig_termios;
+
+->  Before modifying the terminal configuration, I save its original state so that I can restore it when input is complete or the shell exits. 
+    This prevents the terminal from remaining in raw mode after the shell terminates.
+
+Q6. What would happen if you didn't restore the terminal?
+
+->  The terminal would remain in raw mode even after the shell exited. Characters would no longer echo, 
+    line editing would stop working, and the terminal would appear broken until manually reset.
+
+Q7. Why keep the raw_mode flag?
+
+->  It prevents enabling or disabling raw mode multiple times unnecessarily. 
+    This keeps terminal state transitions consistent and avoids redundant system calls.
+
+
+
+termios
+
+
+
+Q8. Why use termios?
+
+->  termios is the POSIX interface for configuring terminal behavior. 
+    It allows the shell to control features such as canonical mode, character echoing, and input timing.
+
+Q9. What does ICANON do?
+
+    raw.c_lflag &= ~ICANON;
+
+->  ICANON enables canonical, or line-buffered, input. Clearing this flag disables line buffering, 
+    causing characters to be delivered immediately instead of waiting for Enter.
+
+Q10. What does ECHO do?
+
+    raw.c_lflag &= ~ECHO;
+
+->  ECHO causes the terminal to automatically display typed characters. 
+    Disabling it allows the shell to control exactly what appears on the screen while implementing its own editing behavior.
+
+Q11. Why disable both ICANON and ECHO?
+
+->  Disabling canonical mode allows character-by-character input, while disabling echo prevents the terminal from printing characters automatically. 
+    Together, they allow the shell to implement custom line editing.
+
+Q12. What do VMIN and VTIME control?
+
+->  VMIN specifies the minimum number of characters required before read() returns, while VTIME specifies the timeout. 
+    Setting VMIN = 1 and VTIME = 0 causes read() to block until exactly one character is available.
+
+
+
+Reading Input
+
+
+
+Q13. Why use read() instead of scanf()?
+
+->  read() operates directly on file descriptors and returns raw bytes exactly as they arrive from the terminal. 
+    Functions like scanf() perform higher-level parsing and are unsuitable for character-by-character interactive input.
+
+Q14. Why read one character at a time?
+
+    read(STDIN_FILENO, &c, 1);
+
+->  Reading a single character allows the shell to respond immediately to special keys such as backspace, 
+    arrow keys, Ctrl+D, and Enter without waiting for an entire line.
+
+Q15. Why return NULL on EOF?
+
+->  Pressing Ctrl+D on an empty line generates EOF. Returning NULL signals the caller that the user wants to terminate the shell.
+
+
+
+Enter Key
+
+
+
+Q16. Why detect both '\r' and '\n'?
+
+->  Different systems and terminals may send carriage return (\r) or newline (\n) when Enter is pressed. Handling both improves portability.
+
+
+
+Backspace
+
+
+
+Q17. How do you implement backspace?
+
+->  When the user presses Backspace, the shell decreases the current cursor position and writes the sequence 
+    "\b \b" to move the cursor back, erase the displayed character, and position the cursor correctly.
+
+Q18. Why output "\b \b"?
+
+->  \b moves the cursor one position left, the space overwrites the character currently displayed,
+    and the final \b moves the cursor back again. Together they visually erase the last character.
+
+
+Ctrl+D
+
+
+Q19. Why does Ctrl+D exit only when the line is empty?
+
+->  This matches standard shell behavior. Ctrl+D represents end-of-file only when no input has been entered. 
+    If characters are already present, it is treated as a normal editing action rather than an exit request.
+
+
+
+Arrow Keys
+
+Q20. Why do arrow keys begin with ESC?
+
+->  Arrow keys are transmitted as ANSI escape sequences beginning with the Escape character (27). 
+    The shell reads the remaining bytes to determine which arrow key was pressed.
+
+Q21. Why read two additional bytes?
+
+->  The Up and Down arrow keys generate three-byte sequences such as ESC [ A and ESC [ B.
+    After detecting ESC, the shell reads the remaining bytes to identify the specific key.
+
+Q22. How does history navigation work?
+
+->  The shell maintains an index into the command history. 
+    Pressing the Up arrow decrements the index to retrieve older commands, while pressing the Down arrow increments it to move toward newer commands.
+
+Q23. Why erase the current line before displaying a history entry?
+
+->  Without clearing the current input, the previous command would overlap with the existing text. 
+    Clearing the line first ensures only the selected history entry is displayed.
+
+Q24. Why copy the history entry into buf?
+
+->  The user may continue editing the recalled command. Copying it into the editable input buffer allows modifications before execution.
+
+
+
+Buffer Management
+
+
+
+Q25. Why use a static buffer?
+
+->  The buffer remains valid after the function returns without requiring dynamic memory allocation. 
+    Since the shell processes one command at a time, a single reusable buffer is sufficient.
+
+Q26. Why check the buffer size before inserting characters?
+
+->  The check prevents writing beyond the end of the buffer, protecting against buffer overflows and undefined behavior.
+
+Q27. Why null-terminate the buffer?
+
+->  The shell treats the input as a C string. Explicitly appending the null terminator ensures string operations work correctly.
+
+
+
+Design Questions
+
+
+
+Q28. Why restore cooked mode before returning?
+
+->  Input handling is complete once the command has been read. 
+    Restoring the original terminal settings ensures the rest of the shell and any child processes execute with normal terminal behavior.
+
+Q29. Why doesn't this module know anything about parsing or execution?
+
+->  input.c has a single responsibility: collecting user input. Parsing and execution are handled by separate modules, 
+    keeping the design modular and easier to maintain.
+
+Q30. Why implement history navigation here instead of history.c?
+
+->  Detecting arrow keys is part of interactive input handling, so it naturally belongs in input.c. 
+    The history module is responsible for storing and managing history entries, while input.c handles the user interface for navigating them.
+
+
+
+
+Imported Questions
+
+
+Q31. Why do you need raw mode instead of canonical mode?
+
+->  Canonical mode buffers input until the user presses Enter, so the program cannot react to individual key presses. 
+    My shell supports features such as history navigation with arrow keys, custom backspace handling, 
+    and immediate processing of Ctrl+D. To implement these interactive features, I switch the terminal into raw mode using termios, 
+    disable canonical mode and echo, process each keystroke myself, and then restore the original terminal settings when input is complete.
+
+
+
+Limitations 
+
+
+->  It does not support in-line cursor movement (Left/Right arrows), editing in the middle of the line, or terminal resizing.

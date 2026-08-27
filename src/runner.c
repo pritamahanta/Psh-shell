@@ -23,7 +23,7 @@ void norm_and_and(const char *in, char *out, size_t sz){
     for(size_t i = 0; in[i] && j + 1 < sz; i++, j++) {
         if(in[i] == '&' && in[i + 1] == '&') {
             out[j] = ';';
-            i++ ;
+            i += 1 ;
         } else {
             out[j] = in[i];
         }
@@ -32,6 +32,7 @@ void norm_and_and(const char *in, char *out, size_t sz){
 }
 
 int run_sequence(const char *line) {
+    
     char buf[2048] ;
     strncpy(buf, line, sizeof(buf) - 1);
     buf[sizeof(buf) - 1] = '\0';

@@ -1,0 +1,2 @@
+dd if=/dev/zero bs=1M count=1024 status=none | cat | cat | cat | cat | cat | cat | cat | cat > /dev/null
+exit

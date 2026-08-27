@@ -11,6 +11,9 @@
 #include<fcntl.h>
 #include<ctype.h>
 
+// testing
+#include <time.h>
+
 #ifndef MAX_INFILES
 #  define MAX_INFILES   8
 #endif
@@ -18,6 +21,18 @@
 #ifndef MAX_OUTFILES
 #  define MAX_OUTFILES  8
 #endif
+
+
+// test
+
+#ifdef PSH_BENCH
+static long long now_ns(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    return (long long)ts.tv_sec * 1000000000LL + ts.tv_nsec;
+}
+#endif
+
 
 
 static void expand_vars(char *cmd, char *out, size_t sz) {
@@ -79,8 +94,6 @@ static int split_argv(char *cmd, char **argv, int max) {
 
 static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_detach_stdin, pid_t pg_lead) {
 
-
-
     char *infiles[MAX_INFILES] ; int n_in = 0 ;
     char *outfiles[MAX_OUTFILES] ; int n_out = 0 ;
     int append [MAX_OUTFILES] ;
@@ -117,7 +130,14 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
     if (argc == 0 || argv[0] == NULL) {
         _exit(0);
     }
-   
+
+    // test 
+
+    #ifdef PSH_BENCH
+        long long start_ns = now_ns();  
+    #endif
+    //
+
     pid_t pid = fork() ;
 
     if( pid == 0 ) { 
@@ -191,6 +211,13 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
         int status;
         waitpid(pid, &status, WUNTRACED);
 
+        // test 
+        #ifdef PSH_BENCH
+            long long end_ns = now_ns();
+            fprintf(stderr, "PSH_EXEC_NS %lld\n", end_ns - start_ns);
+        #endif
+        // 
+
         if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT) {
             write(STDOUT_FILENO, "\n", 1);  // clean newline after ^C
         }
@@ -223,6 +250,8 @@ int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
         if(first_pid) *first_pid = p ;
     }
     else {
+        
+        // {read_end, right_end}
         int fds[2] = {-1, -1} ;
         int in_fd = STDIN_FILENO ;
 

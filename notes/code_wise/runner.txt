@@ -1,0 +1,151 @@
+
+
+Q1. What is the responsibility of run_sequence()?
+
+->  run_sequence() is responsible for executing an entire command line. It first separates the input into individual commands using ;
+    and &, determines whether each command should run in the foreground or background, executes built-in commands directly within
+    the shell process, and delegates external commands to the execution module.
+
+Q2. Why do you copy line into buf?
+
+    char buf[2048];
+    strncpy(buf, line, sizeof(buf) - 1);
+
+->  run_sequence() modifies the command string by replacing separators like ; and & with null terminators. 
+    Since the original input may still be needed elsewhere, I first create a local copy so I can safely modify it.
+
+Q3. Why do you replace separators with '\0'?
+
+    buf[i] = '\0';
+
+->  Replacing separators with null terminators converts one large string into multiple independent C strings without
+    allocating additional memory. Each command can then be processed simply by storing a pointer to its starting position.
+
+Q4. Why do you store pointers instead of copying every command?
+
+    cmd[cnt++] = buf + st;
+
+->  All commands already exist inside the same buffer. By storing pointers to the beginning of each command, 
+    I avoid unnecessary memory allocations and string copies, making the parsing process more efficient.
+
+Q5. Why maintain a separate bg[] array?
+
+    bg[cnt] = (buf[i] == '&');
+
+->  Splitting the command removes the separator from the string, so I store whether the separator was & or ; separately. 
+    Later, this information determines whether the command should execute in the foreground or background.
+
+Q6. Why trim leading spaces?
+
+    for (; *s == ' ' || *s == '\t'; s++);
+
+->  After splitting on separators, commands may begin with whitespace. Trimming leading spaces ensures command 
+    recognition works correctly and prevents treating whitespace as part of the command name.
+
+Q7. Why skip empty commands?
+
+    if (*s == '\0') continue;
+
+->  Users may enter inputs like ls ;; pwd, which produce empty command segments. Ignoring them avoids unnecessary parsing and execution.
+
+Q8. Why extract only the first token?
+
+    char *first = strtok(name, " \t|&><;");
+
+->  The first token determines which executable or built-in command should run. 
+    I only need the command name to identify built-ins before parsing the remaining arguments.
+
+Q9. Why do built-ins execute inside the shell process?
+
+->  Built-ins modify the shell's own state. Commands like cd, setenv, and unsetenv must 
+    execute within the shell process itself because changes made inside a child process disappear when that child exits.
+
+Q10. Why can't cd run inside a child?
+
+->  fork() creates a separate process with its own working directory. If cd executes in the child, only the child changes directories.
+    When the child exits, the parent shell remains in the original directory. Therefore, cd must execute in the shell process.
+
+Q11. Why is pwd implemented as a built-in?
+
+->  Although /bin/pwd exists, implementing it as a built-in avoids creating an unnecessary child process. 
+    Since retrieving the current working directory only requires the shell's own state, a built-in is more efficient.
+
+Q12. Why is echo a built-in?
+
+->  echo is a simple command that requires no external executable. 
+    Implementing it as a built-in reduces process creation overhead and matches the behavior of most modern shells.
+
+Q13. Why isn't every command treated as a built-in?
+
+->  Most commands are external programs located on the filesystem. Instead of reimplementing them, 
+    the shell delegates their execution to exec() after creating a child process.
+
+Q14. Why separate built-in execution from external execution?
+
+->  Built-ins affect the shell's internal state, while external commands run as independent processes. 
+    Separating them keeps responsibilities clear and avoids unnecessary forks for built-ins.
+
+Q15. Why call execute_command() instead of handling fork() here?
+
+->  run_sequence() focuses on command parsing and dispatch. Process creation, redirection, pipelines,
+    and execution are delegated to execute_command(). This separation improves modularity and makes the code easier to maintain.
+
+Q16. Why pass wait_fg?
+
+    int wait_fg = !bg[i];
+
+->  The parser determines whether a command ends with &. Instead of embedding waiting logic in the parser,
+    it passes this information to the execution module, which decides whether to wait for the child or return immediately.
+
+Q17. What does wait_fg represent?
+
+->  wait_fg indicates whether the shell should wait for the command to finish. 
+    Foreground commands block the shell until completion, while background commands allow the shell to immediately accept new input.
+
+Q18. Why return immediately after executing a built-in?
+
+     if (is_builtin) continue;
+
+->  Once a built-in executes successfully, there is no need to invoke the external execution path.
+    Continuing immediately prevents duplicate execution.
+
+Q19. Why implement command dispatch using a lookup table?
+
+     const char *built_in_commands[] = { ... };
+
+->  The array centralizes the supported built-in commands, making lookup straightforward and simplifying future extensions.
+    Adding a new built-in only requires updating the table and corresponding dispatch logic.
+
+Q20. Why not compare the entire command string?
+
+->  The command string includes arguments. Only the first token determines which command is being invoked,
+    so comparing the first token is sufficient and avoids false mismatches.
+
+Q21. Why tokenize twice?
+
+->  The first tokenization identifies the command name for dispatch. If it is a built-in, 
+    a second tokenization extracts all arguments required by that built-in. Separating these stages keeps the dispatch logic simple.
+
+Q22. Why is norm_and_and() separate from run_sequence()?
+
+->  Input normalization is a preprocessing step, while run_sequence() is responsible for execution. 
+    Separating normalization from execution keeps each function focused on a single responsibility.
+
+Q23. Why normalize && before parsing?
+
+->  My shell currently does not implement logical AND semantics. During preprocessing, I convert && into ;, 
+    allowing the parser to handle it as sequential execution without introducing additional parsing complexity.
+
+    Important: If an interviewer asks whether this behaves like Bash, the correct answer is No. In Bash,
+    && executes the second command only if the first succeeds. My shell intentionally simplifies this behavior.
+
+Q24. Why don't you parse pipes and redirections here?
+
+->  run_sequence() only separates top-level commands. Parsing pipelines, redirections, and execution details belongs to the 
+    execution layer, which keeps the parser simpler and follows the principle of separation of concerns.
+
+Q25. What's the overall execution flow of run_sequence()?
+
+->  The function copies the input, splits it into individual commands, records foreground/background execution mode,
+    trims whitespace, identifies built-ins, executes built-ins directly within the shell,
+    and delegates external commands to execute_command(). This design cleanly separates parsing, dispatch, and execution.

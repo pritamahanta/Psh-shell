@@ -8,7 +8,6 @@
 #include "../include/history.h"
 #include "../include/input.h"
 
-
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -36,6 +35,9 @@ void shell_loop() {
     // size_t cap = 0 ;
 
     for(;;) {
+        
+
+        // update each jobs state before showing prompt 
         jobs_check(&global_shell_state) ;
         show_prompt(&global_shell_state);
         fflush(stdout) ;
@@ -51,11 +53,14 @@ void shell_loop() {
         line[2047] = '\0';
         // ssize_t n = strlen(line);
 
+        // again job check as a job might have chanaged it's state while user typing 
         jobs_check(&global_shell_state) ;
         if(line[0] == '\0') continue ;
 
         history_add_if_needed(&global_shell_state, line) ;
 
+
+        // converting && to ; 
         char norm[2048];
         norm_and_and(line, norm, sizeof(norm)) ;    
         
@@ -81,14 +86,28 @@ int main() {
     signals_init() ;
     history_load(&global_shell_state); 
 
+
+    // A background process tries to read from terminal -> kernel will suspend that process 
     signal(SIGTTOU, SIG_IGN);
+
+    // A background process tries to write to terminal -> kernel will suspend that process 
     signal(SIGTTIN, SIG_IGN);
 
+    // creates its own process group
     pid_t shell_pgid = getpid();
+    
+    // Ensures the shell becomes a process group leader 
+    // it isolates from any process group created by the shell
+    // shell becomes it's own leader
     setpgid(shell_pgid, shell_pgid);
-    tcsetpgrp(STDIN_FILENO, shell_pgid);
 
+
+    // shell becomes the owner of terminal / foreground
+    tcsetpgrp(STDIN_FILENO, shell_pgid);
     shell_loop();
 
     return 0;
 }
+
+
+// Everything is a file.

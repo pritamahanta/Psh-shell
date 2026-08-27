@@ -15,6 +15,7 @@ void jobs_init(shell_state *st) {
         st -> jobs[i].active = 0 ;
     }
 }
+ 
 static const char *name_of(const char *s) {
     return s ? s : "";
 }

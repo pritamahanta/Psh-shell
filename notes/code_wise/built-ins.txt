@@ -1,0 +1,173 @@
+
+
+
+Q1. Why are these commands implemented as built-ins instead of external programs?
+
+->  These commands either modify the shell's own state or can be executed more efficiently inside the shell process. 
+    For example, cd, setenv, and unsetenv must execute within the shell because their effects need to persist after the command completes.
+
+Q2. Which built-ins must execute inside the shell process?
+
+->  cd, setenv, unsetenv, and exit must execute in the shell process because they modify the shell's working directory, environment, 
+    or lifetime. Running them in a child process would make those changes disappear when the child exits.
+
+
+command_cd()
+
+
+Q3. Why can't cd be implemented using fork() and exec()?
+
+->  chdir() changes the current working directory of the calling process. If cd runs in a child process, 
+    only the child's working directory changes. After the child exits, the parent shell remains in the original directory. 
+    Therefore, cd must execute in the shell process.
+
+Q4. Why call getcwd() before chdir()?
+
+->  I save the current working directory before changing it so that I can implement cd -, which returns the user to the previous directory.
+
+Q5. Why store prev_dir?
+
+->  prev_dir keeps track of the previous working directory, allowing the shell to support the cd - command, similar to Bash.
+
+Q6. Why free the previous directory before assigning a new one?
+
+    free(prev_dir);
+    prev_dir = oldcwd;
+
+->  getcwd(NULL, 0) dynamically allocates memory. Before storing a new previous directory, I free the old one to avoid memory leaks.
+
+
+Q7. Why use HOME when no argument is given?
+
+->  This matches standard shell behavior. If the user types cd without arguments or uses ~, 
+    the shell changes to the directory specified by the HOME environment variable.
+
+Q8. Why print the current directory after cd -?
+
+->  Standard Unix shells display the new working directory after executing cd -. My implementation follows the same behavior.
+
+Q9. What happens if HOME is not set?
+
+->  The command cannot determine the default destination, so it reports an error instead of attempting to change directories.
+
+
+command_pwd()
+
+
+Q10. Why use getcwd() instead of storing the current directory manually?
+
+->  getcwd() always retrieves the actual current working directory maintained by the operating system, 
+    ensuring the shell reports the correct location even if it changes through other means.
+
+Q11. Why use getcwd(NULL, 0)?
+
+->  Passing NULL and 0 allows the library to allocate a buffer of the required size automatically, avoiding fixed-size buffers and possible overflow.
+
+Q12. Why free the result of getcwd()?
+
+->  When getcwd() allocates memory dynamically, the caller is responsible for releasing it to prevent memory leaks.
+
+
+command_echo()
+
+
+Q13. Why support the -n option?
+
+->  The -n option suppresses the trailing newline, matching the behavior of standard Unix echo.
+
+Q14. Why print spaces only between arguments?
+
+->  The shell should reproduce the user's argument separation without adding an extra trailing space after the final argument.
+
+
+command_env()
+
+
+Q15. Why use environ?
+
+->  environ is the global environment table maintained by the process. 
+    Iterating through it allows the shell to display every currently defined environment variable.
+
+Q16. Why allow an optional env parameter?
+
+->  The optional parameter makes the function reusable. If a custom environment is provided, it prints that environment; otherwise,
+    it defaults to the shell's own environment.
+
+
+command_which()
+
+
+Q17. Why check built-ins before searching PATH?
+
+->  Built-ins are handled internally by the shell and may not exist as executables on the filesystem. 
+    Checking them first ensures the shell reports them correctly.
+
+
+Q18. How does which locate an executable?
+
+->  It retrieves the PATH environment variable, splits it into directories, appends the command name to each directory, 
+    and uses access(..., X_OK) to determine whether an executable exists.
+
+Q19. Why use access() instead of open()?
+
+->  access(..., X_OK) specifically checks whether the current user has execute permission for a file, which is exactly what which needs.
+
+Q20. Why duplicate the PATH string?
+
+    char *dup = strdup(path);
+
+->  strtok() modifies its input string. Since the original PATH environment variable must remain unchanged, I duplicate it before tokenization.
+
+Q21. Why free the duplicated PATH?
+
+->  strdup() allocates memory dynamically. Freeing it prevents memory leaks after the search is complete.
+
+
+
+command_setenv()
+
+
+Q22. Why support both formats?
+
+    setenv VAR=value
+    setenv VAR value
+
+->  Supporting both forms provides a more flexible user interface while ultimately calling the same underlying setenv() system function.
+
+
+Q23. Why validate the variable name?
+
+->  An empty variable name is invalid. Validation prevents malformed environment entries from being created.
+
+
+Q24. What does the final argument 1 mean in setenv()?
+
+    setenv(name, value, 1);
+
+->  The third argument specifies whether an existing variable should be overwritten. Passing 1 allows updates to existing environment variables.
+
+
+command_unsetenv()
+
+
+Q25. Why check for missing arguments?
+
+->  unsetenv() requires the name of the variable to remove. Calling it without a variable name would be invalid, so the shell reports a usage error.
+
+
+Design Questions
+
+
+Q26. Why don't built-ins call execvp()?
+
+->  Built-ins are implemented directly inside the shell process. 
+    They execute as normal C functions and therefore do not require creating a new process or replacing the current process image.
+
+Q27. Why do most built-ins return an integer?
+
+->  Returning an integer provides a status code indicating success or failure, similar to how external programs return exit statuses. 
+    This makes error handling consistent across the shell.
+
+Q28. Why use perror() instead of printing custom messages?
+
+->  perror() automatically appends a descriptive message corresponding to the current value of errno, providing more informative error reporting.

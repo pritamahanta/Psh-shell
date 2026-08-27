@@ -1,7 +1,7 @@
 #ifndef SHELL_H
 #define SHELL_H
 
-#include <limits.h>
+#include <linux/limits.h>
 #include <sys/types.h>
 
 #define LOG_SIZE 15
@@ -9,7 +9,7 @@
 
 typedef enum { JOB_NONE = 0, JOB_RUNNING = 1, JOB_STOPPED = 2 } job_state;
 
-typedef struct {
+typedef struct bg_job {
     pid_t pid;
     pid_t pgid;
     int id;

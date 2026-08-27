@@ -1,0 +1,190 @@
+
+1.  What is a file descriptor ? 
+
+->  A file descriptor is a unique, non-negative integer used by an operating system (like Linux or Unix) 
+    to identify and manage an open Input/Output (I/O) resource, such as a file, network socket, pipe, or hardware device.
+
+
+2.  How a File descriptor works ? 
+
+->  When your program wants to perform an I/O operation, it makes a System Call (a direct request to the OS Kernel).
+    The kernel then uses the file descriptor to determine where the operation should be performed.
+
+Step-by-Step Execution
+----------------------
+
+1. The Program Requests
+   Your program executes a system call such as:
+       write(3, "Hello", 5);  // write(fd, buffer, count)
+
+2. The OS Looks Up the File Descriptor
+   The OS pauses your program, takes the file descriptor (3),
+   and looks at entry 3 in the process's file descriptor table.
+
+3. The OS Finds the Destination
+   The table tells the OS that file descriptor 3 refers to a
+   specific resource (for example, a file, pipe, terminal,
+   or a network socket connected to a server).
+
+4. The OS Performs the Operation
+   The OS kernel takes the data ("Hello") and writes it to the
+   resource associated with file descriptor 3.
+   If it is a network socket, the data is transmitted through
+   the system's network interface (Wi-Fi/Ethernet).
+
+5. The Program Resumes
+   After the operation completes, the kernel returns control
+   to your program along with the result (e.g., the number of
+   bytes successfully written).
+
+
+Flow Summary
+------------
+
+Program
+   |
+   |  write(3, "Hello", 5)
+   v
+System Call
+   |
+   v
+Kernel
+   |
+   |  Looks up FD 3 in the process's File Descriptor Table
+   v
+Finds the Associated Resource
+   |
+   |  (File / Socket / Pipe / Terminal)
+   v
+Performs the I/O Operation
+   |
+   v
+Returns Result to the Program
+
+
+
+2. The three standard File Descriptors 
+
+->  Every time a new process (program) starts, the operating system automatically opens 
+    three standard streams and assigns them fixed integer file descriptors.
+
+1. Standard Input (stdin)
+   - Integer Value      : 0
+   - Symbolic Constant  : STDIN_FILENO
+   - Purpose            : Reads input for the program.
+   - Default Source     : Keyboard / Terminal input
+
+2. Standard Output (stdout)
+   - Integer Value      : 1
+   - Symbolic Constant  : STDOUT_FILENO
+   - Purpose            : Writes normal program output.
+   - Default Destination: Terminal screen
+
+3. Standard Error (stderr)
+   - Integer Value      : 2
+   - Symbolic Constant  : STDERR_FILENO
+   - Purpose            : Writes error messages and diagnostics.
+   - Default Destination: Terminal screen (for errors)
+
+
+
+
+3. When a File Descriptor Works (The Triggers) ? 
+
+->  A file descriptor (FD) becomes active during four major lifecycle events in a program.
+
+1. Reading Data (read)
+----------------------
+
+The program asks:
+    "Is there any new data available on this file descriptor?"
+
+Examples:
+- FD 0  -> Keyboard (stdin)
+- FD 4  -> Internet socket
+
+Example:
+    read(0, buffer, sizeof(buffer));
+
+Behavior:
+- The kernel checks whether data is available.
+- If no data is available (for blocking I/O), the process sleeps.
+- Once data arrives, the kernel wakes the process and copies the data into the program's buffer.
+
+------------------------------------------------------------
+
+2. Writing Data (write)
+-----------------------
+
+The program wants to send data through a file descriptor.
+
+Example:
+    write(1, "Hello", 5);
+
+Possible destinations:
+- FD 1 -> Terminal screen (stdout)
+- FD 2 -> Error output (stderr)
+- FD 3 -> File
+- FD 4 -> Network socket
+
+Behavior:
+- The kernel looks up the file descriptor.
+- It determines the associated resource.
+- The data is immediately routed to that destination.
+
+------------------------------------------------------------
+
+3. Multiplexing (select / poll / epoll)
+---------------------------------------
+
+Modern applications often manage thousands of file descriptors simultaneously.
+
+Example:
+- A chat server may have 10,000 connected clients.
+- Each client has its own socket (file descriptor).
+
+Instead of repeatedly checking every socket manually, the program asks the kernel:
+
+    "Watch all these file descriptors and wake me only when one becomes ready."
+
+Functions used:
+- select()
+- poll()
+- epoll()   (Linux)
+
+Behavior:
+- The process sleeps while the kernel monitors all FDs.
+- When any FD becomes readable or writable, the kernel wakes the process.
+- The application handles only the ready descriptors.
+
+This is the foundation of scalable event-driven servers.
+
+------------------------------------------------------------
+
+4. Closing a File Descriptor (close)
+------------------------------------
+
+When a program no longer needs a resource, it closes the file descriptor.
+
+Example:
+    close(3);
+
+Behavior:
+- The kernel removes FD 3 from the process's file descriptor table.
+- Any resources associated with it are released.
+- If it is the last reference, the underlying file/socket/pipe is closed.
+- The file descriptor number becomes available for reuse.
+
+------------------------------------------------------------
+
+Summary
+-------
+
+A file descriptor is actively used during four major operations:
+
+1. read()   -> Receive data from a resource.
+2. write()  -> Send data to a resource.
+3. select()/poll()/epoll() -> Wait for events on one or more FDs.
+4. close()  -> Release the resource and free the FD.
+
+These four operations form the core lifecycle of file descriptor usage in Unix/Linux systems.

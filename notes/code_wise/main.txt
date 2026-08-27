@@ -1,0 +1,270 @@
+
+
+
+INITIALISATION
+
+Q1. Why do you call setpgid(shell_pgid, shell_pgid)?
+
+->  When my shell starts, it is initially a child process of another shell, such as bash.
+    At that point it belongs to the parent's process group. I call setpgid(shell_pgid, shell_pgid)
+    to create a new process group where my shell becomes the leader. This isolates my shell from the parent shell's 
+    process group and allows it to manage its own foreground and background jobs independently.
+
+
+Q2. Why can't you directly call tcsetpgrp()?
+
+->  Before calling tcsetpgrp(), my shell is still considered a background process group because 
+    the terminal is owned by the parent shell's process group. If I immediately try to manipulate the terminal,
+    the kernel may send SIGTTOU and suspend my shell. Therefore, I ignore SIGTTOU before calling tcsetpgrp() 
+    so the shell can safely become the foreground process group.
+
+Q3. Why do you ignore SIGTTOU? 
+
+SIGTTOU stands for Signal TTOU (Signal to Background Output). 
+
+->  SIGTTOU is sent when a background process group attempts terminal-related operations, 
+    such as changing the foreground process group using tcsetpgrp().
+    During shell initialization my shell is temporarily a background process group,
+    so ignoring SIGTTOU prevents it from being suspended before it can take ownership of the terminal.
+
+Q4. Why do you ignore SIGTTIN?
+
+SIGTTIN stands for "Signal Terminal Input"
+
+->  SIGTTIN is sent when a background process group tries to read from the controlling terminal.
+    During initialization there is a short period where my shell is still considered a background process group.
+    Ignoring SIGTTIN ensures that if any terminal read happens during this phase, the shell won't suspend itself.
+
+Q5. What happens if you remove these two lines?
+
+    signal(SIGTTOU, SIG_IGN);   
+    signal(SIGTTIN, SIG_IGN);
+
+->  The shell may suspend itself during initialization. After creating its own process group with setpgid(),
+    it is still not the terminal's foreground owner. If it performs terminal operations like tcsetpgrp(),
+    the kernel may send SIGTTOU. Since the default action is to stop the process, the shell can freeze before the REPL loop starts.
+
+Q6. Why is tcsetpgrp() necessary?
+
+->  Creating a process group using setpgid() only organizes processes logically. 
+    It does not give the shell control of the terminal. tcsetpgrp() changes the terminal's foreground process group to my shell,
+    allowing it to receive keyboard input and control interactive programs.
+
+Q7. What is the difference between setpgid() and tcsetpgrp()?
+
+->  setpgid() creates or changes a process group, while tcsetpgrp() changes which process group currently owns the terminal.
+    One manages process organization, and the other manages terminal ownership.
+
+Q8. Why is terminal ownership important?
+
+->  Only the foreground process group is allowed to interact freely with the terminal. 
+    Interactive programs like vim, nano, or cat expect to receive keyboard input.
+    If they are not in the foreground process group, the kernel prevents terminal interaction by sending signals like SIGTTIN or SIGTTOU.
+
+Q9. What is a process group?
+
+->  A process group is a collection of related processes identified by a process group ID (PGID). 
+    The shell creates a separate process group for each job so it can manage all processes in that job together.
+    Signals like SIGINT, SIGTSTP, or SIGKILL can then be sent to the entire process group.
+
+Q10.Why do you use negative PIDs in kill()?
+
+    kill(-g, SIGKILL);
+
+->  Passing a negative PID to kill() tells the kernel to send the signal to every process in that process group.
+    Since a job may contain multiple processes, especially pipelines,
+    this allows me to terminate the entire job instead of only one process.
+
+Q11. Why do you create separate process groups for jobs?
+
+->  A job may consist of multiple processes, such as commands connected by pipes. 
+    By placing all of them into the same process group, I can move the entire job between foreground and background, 
+    and send signals like SIGINT, SIGTSTP, or SIGKILL to all processes together.
+
+Q12. Why doesn't the shell itself terminate when the user presses Ctrl+C?
+
+->  Ctrl+C generates SIGINT for the foreground process group. When another program is running in the foreground, 
+    the shell temporarily gives terminal ownership to that program's process group,
+    so the signal is delivered to the program instead of the shell. After the program exits or stops, the shell regains terminal ownership.
+
+Q13. Why do shells use process groups instead of individual PIDs?
+
+->  Many commands are composed of multiple processes, such as pipelines. Managing each PID individually would be complicated. 
+    Process groups let the shell treat all related processes as a single job for signal delivery and terminal control.
+
+Q14. Why is job control based on process groups?
+
+->  Operations like foregrounding, backgrounding, stopping, resuming, and signal handling apply to entire jobs 
+    rather than individual processes. Process groups provide the kernel mechanism that makes job control efficient and reliable.
+
+Q15. Walk me through your shell initialization.
+
+->  First, I initialize the shell state, history, prompt, jobs, and signal handlers. 
+    Then I ignore SIGTTIN and SIGTTOU to avoid being suspended while taking terminal control.
+    Next, I create a new process group using setpgid() so the shell becomes its own process group leader. 
+    After that, I call tcsetpgrp() to make the shell's process group the foreground owner of the terminal. 
+    Once initialization is complete, I enter the main REPL loop, where I repeatedly read input, parse commands, 
+    execute them, and monitor background jobs.
+
+
+REPL LOOP 
+
+Q1. What is a REPL loop?
+
+->  REPL stands for Read-Evaluate-Print Loop. It is the main execution loop of an interactive shell. In my shell, 
+    it repeatedly waits for user input, parses the command, executes it, and then waits for the next command until EOF is received.
+
+Q2. Walk me through your shell_loop().
+
+->  The loop starts by checking for completed background jobs. Then it displays the prompt and flushes stdout to ensure
+    the prompt appears immediately. Next, it reads a line of input from the user. If EOF is received, the shell performs 
+    cleanup and exits. Otherwise, it stores the command, updates command history, normalizes operators, performs syntax validation, 
+    executes the command sequence, and finally checks background jobs again before waiting for the next command.
+
+Q3. Why do you call jobs_check() before showing the prompt?
+
+    jobs_check(&global_shell_state);
+    show_prompt(&global_shell_state);
+
+->  Background jobs may finish while the shell is idle waiting for input. 
+    Calling jobs_check() before printing the prompt ensures completed jobs are reported immediately, 
+    so the prompt always reflects the latest job state.
+
+Q4. Why do you call jobs_check() again after reading input?
+
+    jobs_check(&global_shell_state);
+
+->  A background job may terminate while the user is typing a command. 
+    Calling jobs_check() again ensures those state changes are detected before executing the next command,
+    keeping the job table synchronized.
+
+Q5. Why do you call jobs_check() after executing commands?
+
+    run_sequence(norm);
+    jobs_check(&global_shell_state);
+
+->  Some commands may immediately start or finish background jobs. 
+    Checking again after execution updates the shell's job table before the next prompt is displayed.
+
+Q6. Why do you flush stdout after printing the prompt?
+
+    show_prompt(...);
+    fflush(stdout);
+
+->  Standard output is buffered. Without fflush(), the prompt might remain in the buffer and not appear immediately, 
+    especially when stdout is not line-buffered. Flushing guarantees the user sees the prompt before input is read
+
+Q7. Why don't you directly use the returned pointer from input_read_line()?
+
+    char *raw = input_read_line(...);
+    strncpy(line, raw, 2047);
+
+->  I copy the returned string into my own buffer so the shell has ownership of the command. 
+    This prevents later modifications or internal buffer reuse inside the input module from affecting command processing.
+
+Q8. Why do you allocate line only once?
+
+    if (!line) line = malloc(2048);
+
+->  The shell executes continuously. Allocating memory once and reusing it avoids repeated 
+    heap allocations and deallocations for every command, reducing overhead.
+
+Q9. Why use strncpy() instead of directly assigning the pointer?
+
+->  Pointer assignment would only copy the address, meaning both variables refer to the same memory.
+    By copying the contents into my own buffer, I ensure the shell owns an independent copy of the command.
+
+Q10. Why do you explicitly null terminate?
+
+    line[2047] = '\0';
+
+->  strncpy() does not guarantee null termination if the source string reaches the specified limit.
+    Explicitly setting the last character prevents buffer overreads and undefined behavior.
+
+Q11. Why do you handle EOF separately?
+
+    if (!raw) {
+        printf("logout\n");
+        kill_all(...);
+        break;
+    }
+
+->  NULL indicates EOF, typically generated by Ctrl+D. Instead of treating it as an error, 
+    the shell performs cleanup by terminating managed jobs, restoring terminal state, and exiting gracefully.
+
+Q12. Why don't you exit immediately on EOF?
+
+->  My shell may still have active background jobs. Before exiting,
+    I terminate those jobs and restore terminal settings to avoid leaving orphaned processes running.
+
+Q13. Why skip empty commands?
+
+    if (line[0] == '\0') continue;
+
+->  Empty input is not an error. The shell simply ignores it and displays the next prompt without 
+    performing unnecessary parsing or execution.
+
+Q14. Why add commands to history before parsing?
+
+    history_add_if_needed(...);
+
+->  History records what the user typed, not necessarily what executes successfully.
+    Even if parsing later fails, the original command remains available in history, matching the behavior of common Unix shells.
+
+Q15.Why normalize && before parsing?
+
+    norm_and_and(line, norm, sizeof(norm));
+
+->  My shell internally represents logical separators in a simplified form before parsing. 
+    Normalizing the input reduces parser complexity because the parser only needs to handle one representation 
+    instead of multiple equivalent forms.
+
+Q16. Why validate syntax before execution?
+
+    if (!parse_shell_cmd(norm)) {
+        fprintf(stderr, "Syntax error\n");
+        continue;
+    }
+
+->  Parsing verifies the command structure before execution. Detecting syntax errors early prevents partially
+    executing malformed commands and keeps execution logic simpler.
+
+Q17. Why separate parsing and execution?
+
+->  Parsing determines whether the command is syntactically valid, while execution performs the requested operations. 
+    Separating these responsibilities improves modularity, simplifies debugging, and makes the shell easier to extend.
+
+Q18. Why pass shell_state everywhere?
+
+->  shell_state centralizes the shell's runtime information, including jobs, history, prompt state, and previous working directory.
+    Passing it explicitly avoids excessive global variables and keeps module interfaces consistent.
+
+Q19. Why is shell_loop() an infinite loop?
+
+    for (;;)
+
+->  An interactive shell is designed to run continuously until the user explicitly exits or EOF is received. 
+    Using an infinite loop naturally models this behavior, with termination handled by break when required.
+
+Q20. Why use continue instead of nested if statements?
+
+->  Early continue statements handle exceptional cases like empty input or syntax errors immediately. 
+    This keeps the main execution path linear and improves readability.
+
+Q21. What is the execution pipeline of your shell?
+
+->  The execution flow is:
+    Check background jobs.
+    Display the prompt.
+    Read user input.
+    Handle EOF if present.
+    Copy the command into the shell's buffer.
+    Check background jobs again.
+    Ignore empty commands.
+    Store the command in history.
+    Normalize the input.
+    Validate syntax.
+    Execute the command sequence.
+    Update background job status.
+    Repeat.
+

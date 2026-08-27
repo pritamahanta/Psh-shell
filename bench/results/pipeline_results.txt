@@ -1,0 +1,4 @@
+1 stages: 0.580 s median, 1.724 GiB/s median
+2 stages: 0.575 s median, 1.739 GiB/s median
+4 stages: 0.615 s median, 1.626 GiB/s median
+8 stages: 0.800 s median, 1.250 GiB/s median

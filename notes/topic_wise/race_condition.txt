@@ -1,0 +1,121 @@
+1. The Problem: The Scheduling Race Condition
+
+
+When a shell forks a child process to execute a command (such as `ls` or `vim`), two operations must occur:
+
+1. The child process must be placed into its own process group.
+   Function used:
+       setpgid()
+
+2. The shell must transfer terminal control to that process group.
+   Function used:
+       tcsetpgrp()
+
+The Race Condition
+------------------
+
+After a call to:
+
+    fork();
+
+the operating system scheduler may choose to execute either the parent process or the child process first.
+
+Since this scheduling order is unpredictable, a race condition can occur.
+
+------------------------------------------------------------
+
+Scenario A: Child Executes First (Correct Case)
+-----------------------------------------------
+
+Execution Order:
+
+1. Parent calls fork().
+2. Child starts running.
+3. Child executes:
+       setpgid(0, 0);
+4. A new process group is successfully created.
+5. Parent resumes execution.
+6. Parent calls:
+       tcsetpgrp(terminal_fd, child_pgid);
+
+Result:
+- The process group already exists.
+- Terminal control is successfully transferred.
+- The child program executes normally.
+
+------------------------------------------------------------
+
+Scenario B: Parent Executes First (Problematic Case)
+----------------------------------------------------
+
+Execution Order:
+
+1. Parent calls fork().
+2. Parent immediately executes:
+       tcsetpgrp(terminal_fd, child_pid);
+3. The child has NOT executed:
+       setpgid()
+4. Therefore, the process group identified by child_pid does not exist yet.
+
+Result:
+- tcsetpgrp() fails.
+- The kernel returns:
+       EPERM (Operation not permitted)
+- The child process never receives terminal control.
+- Job control breaks.
+
+------------------------------------------------------------
+
+Why Does This Happen?
+---------------------
+
+Process creation and process group creation are two separate operations.
+
+fork()
+    |
+    +--> Child process is created.
+    |
+    +--> Process group is NOT automatically created.
+
+Only after the child executes:
+
+    setpgid()
+
+does the new process group actually exist.
+
+If the parent attempts tcsetpgrp() before setpgid() completes,
+it is referring to a process group that has not yet been created.
+
+------------------------------------------------------------
+
+Timeline
+--------
+
+Correct Execution
+
+Parent: fork() -----------------------------> tcsetpgrp()
+                \                           ^
+                 \                         /
+                  ---> Child: setpgid() ---
+
+Result: Success
+
+------------------------------------------------------------
+
+Incorrect Execution
+
+Parent: fork() -----> tcsetpgrp() (Fails: EPERM)
+                \
+                 \
+                  ---> Child: setpgid() (Too Late)
+
+Result: Race Condition
+
+------------------------------------------------------------
+
+Key Takeaway
+------------
+
+The scheduler decides whether the parent or child runs first after fork().
+If the parent calls tcsetpgrp() before the child creates its process group using setpgid(), terminal control cannot be transferred because the target process group does not yet exist.
+This scheduling uncertainty is known as the Scheduling Race Condition.

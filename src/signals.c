@@ -33,6 +33,14 @@ static void on_sigtstp(int sig) {
         pending_tstp = 1;           
     }
 }
+/*
+struct sigaction {
+    void (*sa_handler)(int); // pointer to the signal handling fn 
+    // sigset_t sa_mask; 
+    int sa_flags; // set of signals that will be temporarily blocked while the handler is running.
+    void (*sa_sigaction)(int, siginfo_t *, void *);
+};
+*/
 
 void signals_init() {
     struct sigaction sa_int, sa_tstp;
@@ -53,6 +61,18 @@ void signals_init() {
     sigaction(SIGTSTP, &sa_tstp, NULL);
 
     signal(SIGQUIT, SIG_IGN);
+}
+
+void sig_init() {
+    // these are custom signal handlers declaration 
+    struct sigaction sig_int, sig_tstp, sig_quit; 
+
+    // these might contain garbage values so let's clean them 
+
+    memset(&sig_int, 0, sizeof(sig_int)) ;
+    memset(&sig_tstp, 0, sizeof(sig_tstp)) ;
+    memset(&sig_quit, 0, sizeof(sig_quit)) ;
+
 }
 
 void signals_set_fg_pgid(pid_t pgid, const char *cmd) {

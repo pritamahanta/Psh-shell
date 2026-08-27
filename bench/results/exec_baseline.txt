@@ -1,0 +1,7 @@
+Psh external command benchmark
+
+Samples: 10000
+Median: 580.51 us
+Average: 598.39 us
+P95: 723.91 us
+Command: true

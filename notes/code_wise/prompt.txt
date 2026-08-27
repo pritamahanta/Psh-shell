@@ -1,0 +1,117 @@
+
+
+
+Overall Design
+
+
+
+Q1. What is the responsibility of prompt.c?
+
+->  prompt.c is responsible for generating and displaying the shell prompt. 
+    It initializes the shell's home directory, determines the current working directory, 
+    formats the prompt using the username, hostname, and current path, and displays it before every command.
+
+Q2. Why keep prompt generation in a separate module?
+
+->  Prompt generation is purely a user-interface concern. Separating it from parsing and execution 
+    improves modularity and makes it easy to modify the prompt without affecting the rest of the shell.
+
+
+init_prompt()
+
+
+Q3. Why does init_prompt() call getcwd()?
+
+->  During shell startup, I treat the directory from which the shell was launched as the shell's home directory. 
+    This value is stored so the prompt can later display ~ when the current directory is inside that location.
+
+Q4. Why store the home directory inside shell_state?
+
+->  The home directory is used repeatedly while displaying the prompt. 
+    Storing it once avoids calling getcwd() during every prompt generation to determine the reference path.
+
+
+
+path_for_prompt()
+
+
+
+Q5. What is the purpose of path_for_prompt()?
+
+->  It converts the absolute current working directory into the format displayed by the prompt. 
+    If the current directory is inside the shell's home directory, it replaces the common prefix with ~, 
+    otherwise it displays the absolute path.
+
+Q6. Why call getcwd() again inside path_for_prompt()?
+
+->  The working directory may change after every cd command. 
+    Calling getcwd() each time ensures the prompt always displays the user's current location.
+
+Q7. Why replace the home directory with ~?
+
+->  Displaying ~ instead of the full home directory matches the behavior of common 
+    Unix shells and makes the prompt shorter and easier to read.
+
+Q8. What happens if getcwd() fails?
+
+->  The prompt displays ? instead of the current path, 
+    indicating that the shell could not determine the working directory while continuing to function.
+
+
+
+show_prompt()
+
+
+
+Q9. Why call gethostname()?
+
+->  The hostname identifies the machine on which the shell is running. 
+    Including it in the prompt follows the convention used by many Unix shells.
+
+Q10. Why obtain the username using getenv("USER")?
+
+->  The USER environment variable typically contains the current login name. 
+    Using it allows the prompt to identify the current user without additional system calls.
+
+Q11. What happens if USER is not set?
+
+->  The prompt falls back to displaying "user" so that prompt 
+    generation continues gracefully even if the environment variable is missing.
+
+Q12. Why call path_for_prompt() instead of formatting the path directly inside show_prompt()?
+
+->  show_prompt() is responsible only for assembling and displaying the prompt. 
+    Delegating path formatting to a separate function keeps each function focused on a single task.
+
+Q13. Why flush stdout after printing the prompt?
+
+->  The prompt should appear immediately before waiting for user input. 
+    Flushing stdout ensures it is displayed even if output buffering would otherwise delay it.
+
+
+
+Design Questions
+
+
+
+Q14. Why doesn't prompt.c know anything about command execution?
+
+->  Prompt generation is independent of parsing and execution. 
+    Keeping these responsibilities separate improves modularity and makes the code easier to maintain.
+
+Q15. Why doesn't prompt.c maintain the current directory itself?
+
+->  The operating system already maintains the current working directory for the process. 
+    Calling getcwd() retrieves the authoritative value rather than duplicating state inside the shell.
+
+
+
+Important Questions 
+
+
+Q16. Why do you call getcwd() every time you display the prompt instead of storing the current path yourself?
+
+->  The current working directory can change after every cd command. 
+    Instead of maintaining my own copy and keeping it synchronized, 
+    I simply query the operating system using getcwd() whenever I display the prompt. 
+    This guarantees the prompt always reflects the actual working directory.

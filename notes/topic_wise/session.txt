@@ -1,0 +1,513 @@
+1. What is a Session?
+=====================
+
+A session is the highest-level grouping of processes in Unix/Linux.
+Whenever you log into a Linux system, open a terminal window, or establish an SSH connection, the operating system creates a new session.
+A session provides a way to organize related process groups and associate them with a single controlling terminal.
+
+------------------------------------------------------------
+
+Session Leader
+--------------
+
+The very first process created in a session is called the Session Leader.
+Typically, this is your login shell, such as:
+
+- bash
+- zsh
+- sh
+
+Example:
+
+Login
+   |
+   v
+bash (Session Leader)
+
+The Session Leader is responsible for creating new process groups and managing jobs started from that terminal.
+
+------------------------------------------------------------
+
+Controlling Terminal
+--------------------
+
+Every interactive session is associated with one controlling terminal.
+
+Examples:
+
+- /dev/tty
+- Terminal window
+- SSH terminal
+
+The controlling terminal is the device through which the user interacts with all processes in that session.
+
+It provides:
+
+- Keyboard input
+- Screen output
+- Terminal-generated signals (Ctrl+C, Ctrl+Z, etc.)
+
+------------------------------------------------------------
+
+Purpose of a Session
+--------------------
+
+A session groups together related process groups so they can be managed as a single unit.
+When the session ends (for example, when you log out or close the terminal), the operating system can clean up all processes that belong to that session.
+If the controlling terminal disappears, the kernel sends the following signal:
+
+    SIGHUP
+
+to the session leader.
+
+The session leader (or the kernel, depending on the situation) ensures that processes in
+the session are notified so they can terminate or handle the event appropriately.
+
+------------------------------------------------------------
+
+Example Session Structure
+-------------------------
+
+Session
+│
+├── Session Leader (bash)
+│
+├── Process Group 1001
+│   ├── vim
+│   └── less
+│
+├── Process Group 1002
+│   ├── gcc
+│   └── ld
+│
+└── Process Group 1003
+    └── python
+
+Every process group belongs to exactly one session.
+
+------------------------------------------------------------
+
+Hierarchy
+---------
+
+Session
+   |
+   +--> Process Group
+           |
+           +--> Process
+           +--> Process
+           +--> Process
+
+One Session
+    ↓
+Contains one or more Process Groups
+    ↓
+Each Process Group contains one or more Processes
+
+------------------------------------------------------------
+
+What Happens When You Close the Terminal?
+-----------------------------------------
+
+1. The terminal window closes.
+2. The controlling terminal disappears.
+3. The kernel sends a SIGHUP signal to the session leader.
+4. The session leader and other processes receive the notification.
+5. Unless configured otherwise (e.g., using `nohup`, `disown`, or a terminal multiplexer like `tmux`), processes terminate and the session is cleaned up.
+
+------------------------------------------------------------
+
+Summary
+-------
+
+• A session is the highest-level container for related processes.
+• A new session is created when you log in or open a terminal.
+• The first process is called the Session Leader (usually bash or zsh).
+• Every session has one controlling terminal.
+• A session contains one or more process groups.
+• Each process group contains one or more processes.
+• When the terminal closes, a SIGHUP signal is sent to notify processes in the session.
+
+------------------------------------------------------------
+
+Key Takeaway
+------------
+
+Session
+   └── Process Groups
+         └── Processes
+
+A session is simply a collection of process groups that share the same controlling terminal and lifecycle.
+
+
+
+
+
+
+
+2. What Do You Mean by a "Different Session"?
+=============================================
+
+A different session is a completely separate login environment or terminal context.
+
+Each session has:
+
+- Its own Session Leader
+- Its own Controlling Terminal
+- Its own Process Groups
+- Its own Processes
+
+Sessions are isolated from one another for security and stability.
+
+------------------------------------------------------------
+
+Example: Two Separate Terminal Windows
+--------------------------------------
+
+Suppose you open two terminal windows.
+
+Terminal Window A
+
+Session ID: 1000
+
+Session 1000
+│
+├── bash (Session Leader)
+│
+├── Process Group 101
+│   └── vim
+│
+└── Process Group 102
+    └── gcc
+
+------------------------------------------------------------
+
+Terminal Window B
+
+Session ID: 2000
+
+Session 2000
+│
+├── bash (Session Leader)
+│
+├── Process Group 201
+│   └── python
+│
+└── Process Group 202
+    └── top
+
+------------------------------------------------------------
+
+These are two completely independent sessions.
+
+They do not share:
+
+- Process Groups
+- Terminal Control
+- Job Control
+- Foreground Process Group
+
+------------------------------------------------------------
+
+What Can a Process in Session A Do?
+-----------------------------------
+
+A process in Session A can:
+
+✓ Create new processes.
+✓ Create new process groups.
+✓ Join existing process groups within Session A.
+✓ Control its own terminal.
+
+------------------------------------------------------------
+
+What Can It NOT Do?
+-------------------
+
+A process in Session A cannot:
+
+✗ Join a process group in Session B.
+✗ Control Session B's terminal.
+✗ Read keyboard input intended for Session B.
+✗ Send job-control commands to Session B.
+✗ Steal foreground control from Session B.
+
+The kernel prevents these operations.
+
+------------------------------------------------------------
+
+Example with setpgid()
+----------------------
+
+Suppose:
+
+Session A
+    PGID = 101
+
+Session B
+    PGID = 201
+
+A process running in Session A attempts:
+
+    setpgid(child_pid, 201);
+
+Result:
+
+The kernel rejects the request because Process Group 201 belongs to Session B.
+
+This operation is not permitted.
+
+------------------------------------------------------------
+
+Why Are Sessions Isolated?
+--------------------------
+
+Session isolation provides:
+
+- Security
+- Stability
+- Proper job control
+- Independent terminal management
+
+Without session isolation:
+
+- One terminal could interfere with another.
+- Programs could steal keyboard input.
+- Processes could take over another user's terminal.
+- Job control would become unreliable.
+
+------------------------------------------------------------
+
+Real-World Examples of Different Sessions
+-----------------------------------------
+
+Each of the following typically creates a separate session:
+
+1. Opening two GNOME Terminal windows.
+
+       Terminal 1  ---> Session A
+       Terminal 2  ---> Session B
+
+2. Opening two SSH connections.
+
+       ssh user@server   ---> Session A
+       ssh user@server   ---> Session B
+
+3. Logging in from two different virtual consoles (TTYs).
+
+       Ctrl+Alt+F2 ---> Session A
+       Ctrl+Alt+F3 ---> Session B
+
+Each session has its own shell, process groups, and controlling terminal.
+
+------------------------------------------------------------
+
+Summary
+-------
+
+A session is an isolated execution environment.
+
+Different sessions:
+
+✓ Have different session leaders.
+✓ Have different controlling terminals.
+✓ Have different process groups.
+✓ Cannot directly manipulate each other's process groups or job control.
+
+------------------------------------------------------------
+
+Key Takeaway
+------------
+
+Terminal Window A
+    ↓
+Session A
+    ↓
+Process Groups
+    ↓
+Processes
+
+Terminal Window B
+    ↓
+Session B
+    ↓
+Process Groups
+    ↓
+Processes
+
+Session A and Session B are completely independent. A process can only manage process groups within its own session, not those belonging to another session.
+
+
+
+
+
+
+
+
+
+
+
+
+
+3. Can a Shell Contain More Than One Session?
+=============================================
+
+No.
+
+A standard shell (such as `bash` or `zsh`) belongs to exactly one session throughout its lifetime.
+
+In fact, the relationship is the opposite:
+
+    Session
+        |
+        +--> Shell (Session Leader or Child)
+                |
+                +--> Commands
+                +--> Background Jobs
+                +--> Process Groups
+
+A shell never "contains" sessions.
+
+Instead, a session contains the shell.
+
+------------------------------------------------------------
+
+Why?
+----
+
+When a shell starts, it is created inside an existing session.
+
+That session determines:
+
+- The shell's Session ID (SID)
+- The controlling terminal
+- The job-control environment
+
+A shell cannot move to another session after it has been created.
+
+------------------------------------------------------------
+
+Example
+-------
+
+Suppose you open a terminal.
+
+Session 1000
+│
+└── bash
+     ├── vim
+     ├── gcc
+     └── python
+
+Everything started by this shell belongs to Session 1000.
+
+If you open another terminal:
+
+Session 2000
+│
+└── bash
+     ├── top
+     └── less
+
+This is a completely different shell running in a different session.
+
+------------------------------------------------------------
+
+Can One Shell Belong to Multiple Sessions?
+------------------------------------------
+
+No.
+
+Each process in Unix/Linux has exactly one Session ID (SID).
+
+Since the shell is just another process, it can belong to only one session.
+
+A process cannot simultaneously have:
+
+SID = 1000
+and
+SID = 2000
+
+Therefore, a shell cannot be part of multiple sessions.
+
+------------------------------------------------------------
+
+The Exception: Terminal Multiplexers (tmux / screen)
+----------------------------------------------------
+
+Tools like `tmux` and `screen` may make it appear as though one shell is managing multiple sessions, but that's not actually what happens.
+
+Architecture:
+
+            Terminal
+                │
+                ▼
+          tmux Client
+                │
+                ▼
+          tmux Server
+          ├───────────────┐
+          │               │
+          ▼               ▼
+      Shell A         Shell B
+      Session X       Session Y
+
+The `tmux` server is a long-running process that manages multiple virtual terminals (windows/panes). Each shell running inside `tmux` is still an ordinary shell process that belongs to a single Unix session.
+
+When you switch between `tmux` windows, `tmux` simply changes which shell's output is displayed.
+
+The shells themselves remain independent processes.
+
+------------------------------------------------------------
+
+Important Clarification
+-----------------------
+
+There are two different meanings of the word "session":
+
+1. Operating System (POSIX) Session
+   - Created by the kernel.
+   - Contains process groups.
+   - Has one controlling terminal.
+   - Identified by a Session ID (SID).
+
+2. tmux Session
+   - Created by the `tmux` application.
+   - A user-space concept.
+   - Organizes tmux windows and panes.
+   - Has nothing to do with POSIX sessions.
+
+These are completely different concepts, even though they use the same word.
+
+------------------------------------------------------------
+
+Summary
+-------
+
+✓ A POSIX session contains one or more process groups.
+✓ A shell belongs to exactly one POSIX session.
+✓ A shell cannot belong to multiple POSIX sessions.
+✓ Opening another terminal creates another shell in another session.
+✓ `tmux` and `screen` create virtual terminal sessions, not additional POSIX sessions for the same shell.
+
+------------------------------------------------------------
+
+Key Takeaway
+------------
+
+POSIX Hierarchy:
+
+Session
+    │
+    ├── Process Group
+    │      ├── bash
+    │      ├── vim
+    │      └── gcc
+    │
+    └── Process Group
+           └── python
+
+A shell does not contain sessions.
+
+Instead, every shell belongs to exactly one POSIX session for its entire lifetime.
+```

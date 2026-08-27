@@ -27,6 +27,8 @@ static bool input_redir(const char *s, size_t *i) {
     skip_ws(s, i);
     if (s[*i] != '<') { *i = save; return false; }
     (*i)++;
+    
+    // after i/p redirection there should be a word exist 
     if (!word(s, i)) {
         *i = save; return false;
     }
@@ -39,6 +41,8 @@ static bool output_redir(const char *s, size_t *i) {
     if (s[*i] != '>') { *i = save; return false; }
     if (s[*i + 1] == '>') (*i) += 2;
     else (*i)++;
+
+    // after o/p redirection or append there should be a word exist 
     if (!word(s, i)) {
         *i = save; return false;
     }
@@ -46,6 +50,7 @@ static bool output_redir(const char *s, size_t *i) {
 }
 
 static bool atomic(const char *s, size_t *i) {
+    
     skip_ws(s, i);
     if (!word(s, i)) return false;
 
@@ -62,8 +67,8 @@ static bool atomic(const char *s, size_t *i) {
 }
 
 static bool valid_cmd_seg(const char *s, size_t *i) {
-    skip_ws(s, i);
 
+    skip_ws(s, i);
     if (!atomic(s, i)) return false;
 
     for (;;) {
