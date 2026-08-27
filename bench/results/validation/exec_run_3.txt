@@ -1,0 +1,7 @@
+Running Psh execution benchmark...
+
+Samples:
+10000
+Median : 538.40 us
+Average: 567.31 us
+P95    : 754.82 us

@@ -1,0 +1,26 @@
+Psh external-command execution benchmark
+
+Workload:
+- 10,000 x `true` commands per run
+- 5 independent runs
+- CPU pinned to core 2
+
+Per-run medians:
+- Run 1: 536.82 us
+- Run 2: 534.61 us
+- Run 3: 538.40 us
+- Run 4: 534.93 us
+- Run 5: 542.01 us
+
+Final median of run medians:
+536.82 us
+
+Per-run p95:
+- Run 1: 780.75 us
+- Run 2: 741.25 us
+- Run 3: 754.82 us
+- Run 4: 774.38 us
+- Run 5: 797.81 us
+
+Final median of run p95 values:
+774.38 us

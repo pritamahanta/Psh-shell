@@ -29,5 +29,9 @@ bench-exec: bench
 bench-pipeline: $(TARGET)
 	./bench/benchmark_pipeline.sh
 
+# Run job-control benchmark
+bench-jobcontrol: bench
+	./bench/benchmark_jobcontrol.sh
+
 clean:
 	rm -f $(OBJ) $(TARGET)

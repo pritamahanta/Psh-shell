@@ -203,18 +203,36 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
 
     if(wait_fg) {
         pid_t grp = (pg_lead > 0 ? pg_lead : pid);
+
+        
+        // job test 
+        #ifdef PSH_BENCH
+            long long jc_setup_start = now_ns();
+        #endif
+        //
+
+
         setpgid(pid, grp);
         signals_set_fg_pgid(grp, argv[0] ? argv[0] : "");
-
         tcsetpgrp(STDIN_FILENO, grp);
+
+        // job test
+        #ifdef PSH_BENCH
+            long long jc_setup_end = now_ns();
+                fprintf(stderr,
+                    "PSH_JC_SETUP_NS %lld\n",
+                    jc_setup_end - jc_setup_start);
+        #endif
+        //
         
         int status;
         waitpid(pid, &status, WUNTRACED);
 
-        // test 
+        // external test
         #ifdef PSH_BENCH
             long long end_ns = now_ns();
             fprintf(stderr, "PSH_EXEC_NS %lld\n", end_ns - start_ns);
+            long long jc_teardown_start = now_ns();
         #endif
         // 
 
@@ -225,6 +243,16 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
         signals_handle_pending();
         tcsetpgrp(STDIN_FILENO, getpgrp());
         signals_set_fg_pgid(-1, NULL);
+
+        // job test 
+        #ifdef PSH_BENCH
+            long long jc_teardown_end = now_ns();
+
+            fprintf(stderr,
+            "PSH_JC_TEARDOWN_NS %lld\n",
+            jc_teardown_end - jc_teardown_start);
+        #endif
+        //
     }
     return pid ;
 }

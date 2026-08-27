@@ -1,0 +1,21 @@
+Psh job-control benchmark
+=========================
+Commands: 10000
+
+Setup:
+  Samples: 10000
+  Median : 6.26 us
+  P95    : 13.64 us
+
+Teardown:
+  Samples: 10000
+  Median : 1.02 us
+  P95    : 1.21 us
+
+Total job-control bookkeeping:
+  Samples: 10000
+  Median : 7.30 us
+  P95    : 14.68 us
+
+Raw results saved under:
+  /home/perxeuss/Desktop/Psh-shell/bench/

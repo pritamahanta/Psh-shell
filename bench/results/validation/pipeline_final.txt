@@ -1,0 +1,24 @@
+Psh pipeline throughput benchmark
+
+Workload:
+- 1 GiB stream from /dev/zero
+- Pipeline terminates at /dev/null
+- CPU pinned to core 2
+- 10 repetitions per configuration
+- 5 independent benchmark runs
+- Final value = median of the 5 per-run medians
+
+Pipeline configurations:
+- 2 processes: dd -> cat
+- 3 processes: dd -> cat -> cat
+- 5 processes: dd -> cat -> cat -> cat -> cat
+- 9 processes: dd -> cat -> cat -> cat -> cat -> cat -> cat -> cat -> cat
+
+Final median throughput:
+- 2 processes: 2.778 GiB/s
+- 3 processes: 1.342 GiB/s
+- 5 processes: 0.704 GiB/s
+- 9 processes: 0.333 GiB/s
+
+Resume-relevant observation:
+- 9-process pipeline sustained 0.333 GiB/s median throughput

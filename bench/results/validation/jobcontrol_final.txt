@@ -1,0 +1,28 @@
+Psh foreground job-control benchmark
+
+Workload:
+- 10,000 x `true` commands per run
+- 5 independent runs
+- CPU pinned to core 2
+
+Total job-control bookkeeping:
+
+Per-run medians:
+- Run 1: 7.28 us
+- Run 2: 7.28 us
+- Run 3: 7.21 us
+- Run 4: 7.30 us
+- Run 5: 7.38 us
+
+Final median of run medians:
+7.28 us
+
+Per-run p95:
+- Run 1: 14.66 us
+- Run 2: 14.71 us
+- Run 3: 14.58 us
+- Run 4: 14.68 us
+- Run 5: 14.82 us
+
+Final median of run p95 values:
+14.68 us

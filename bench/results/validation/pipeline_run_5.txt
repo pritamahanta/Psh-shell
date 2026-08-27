@@ -1,0 +1,59 @@
+Psh pipeline benchmark
+======================
+Data size : 1 GiB
+Runs/test : 10
+
+Stages: 1 cat(s)
+  Run  1: 0.380 s | 2.632 GiB/s
+  Run  2: 0.360 s | 2.778 GiB/s
+  Run  3: 0.460 s | 2.174 GiB/s
+  Run  4: 0.420 s | 2.381 GiB/s
+  Run  5: 0.370 s | 2.703 GiB/s
+  Run  6: 0.370 s | 2.703 GiB/s
+  Run  7: 0.380 s | 2.632 GiB/s
+  Run  8: 0.360 s | 2.778 GiB/s
+  Run  9: 0.370 s | 2.703 GiB/s
+  Run 10: 0.340 s | 2.941 GiB/s
+  Median: 0.370 s | 2.703 GiB/s
+
+Stages: 2 cat(s)
+  Run  1: 0.700 s | 1.429 GiB/s
+  Run  2: 0.720 s | 1.389 GiB/s
+  Run  3: 0.780 s | 1.282 GiB/s
+  Run  4: 0.750 s | 1.333 GiB/s
+  Run  5: 0.750 s | 1.333 GiB/s
+  Run  6: 0.750 s | 1.333 GiB/s
+  Run  7: 0.740 s | 1.351 GiB/s
+  Run  8: 0.730 s | 1.370 GiB/s
+  Run  9: 0.790 s | 1.266 GiB/s
+  Run 10: 0.740 s | 1.351 GiB/s
+  Median: 0.745 s | 1.342 GiB/s
+
+Stages: 4 cat(s)
+  Run  1: 1.450 s | 0.690 GiB/s
+  Run  2: 1.420 s | 0.704 GiB/s
+  Run  3: 1.410 s | 0.709 GiB/s
+  Run  4: 1.400 s | 0.714 GiB/s
+  Run  5: 1.420 s | 0.704 GiB/s
+  Run  6: 1.590 s | 0.629 GiB/s
+  Run  7: 1.420 s | 0.704 GiB/s
+  Run  8: 1.470 s | 0.680 GiB/s
+  Run  9: 1.460 s | 0.685 GiB/s
+  Run 10: 1.390 s | 0.719 GiB/s
+  Median: 1.420 s | 0.704 GiB/s
+
+Stages: 8 cat(s)
+  Run  1: 2.870 s | 0.348 GiB/s
+  Run  2: 2.870 s | 0.348 GiB/s
+  Run  3: 2.840 s | 0.352 GiB/s
+  Run  4: 2.820 s | 0.355 GiB/s
+  Run  5: 2.910 s | 0.344 GiB/s
+  Run  6: 2.820 s | 0.355 GiB/s
+  Run  7: 2.820 s | 0.355 GiB/s
+  Run  8: 2.960 s | 0.338 GiB/s
+  Run  9: 3.170 s | 0.315 GiB/s
+  Run 10: 3.140 s | 0.318 GiB/s
+  Median: 2.870 s | 0.348 GiB/s
+
+Results saved to:
+/home/perxeuss/Desktop/Psh-shell/bench/results/pipeline_results.txt
